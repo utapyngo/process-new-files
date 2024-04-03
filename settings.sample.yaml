@@ -1,0 +1,7 @@
+# This will watch any *.txt files in /tmp/ and echo the file name to the console
+command: "echo"
+delay: 2
+directories:
+  - /tmp/
+extensions:
+  - txt

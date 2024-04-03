@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
-
+use clap::Parser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -16,11 +16,22 @@ struct Settings {
     directories: Vec<String>,
     command: String,
     extensions: Vec<String>,
+    #[serde(default = "default_file_list")]
+    file_list: String,
+    #[serde(default = "default_prefixes")]
     prefixes: Vec<String>,
 }
 
 fn default_delay() -> u64 {
     5
+}
+
+fn default_file_list() -> String {
+    "file_list.txt".to_string()
+}
+
+fn default_prefixes() -> Vec<String> {
+    Vec::new()
 }
 
 struct Processor {
@@ -124,9 +135,48 @@ impl Directory {
     }
 }
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value = "settings.yaml")]
+    settings: String,
+    #[arg(short = 'c', long)]
+    command: Option<String>,
+    #[arg(short = 'd', long)]
+    delay: Option<u64>,
+    #[arg(short = 'D', long)]
+    directories: Vec<String>,
+    #[arg(short = 'E', long)]
+    extensions: Vec<String>,
+    #[arg(short = 'f', long)]
+    file_list: Option<String>,
+    #[arg(short = 'P', long)]
+    prefixes: Vec<String>,
+}
+
 fn main() {
-    let settings = load_settings("settings.yaml");
-    let mut file_list = FileList::load("file_list.txt", &settings.prefixes);
+    let args = Args::parse();
+    println!("Loading settings from {}", args.settings);
+    let mut settings = load_settings(&args.settings);
+    if let Some(command) = args.command {
+        settings.command = command;
+    }
+    if let Some(delay) = args.delay {
+        settings.delay = delay;
+    }
+    if !args.directories.is_empty() {
+        settings.directories = args.directories;
+    }
+    if !args.extensions.is_empty() {
+        settings.extensions = args.extensions;
+    }
+    if let Some(file_list) = args.file_list {
+        settings.file_list = file_list;
+    }
+    if !args.prefixes.is_empty() {
+        settings.prefixes = args.prefixes;
+    }
+    let mut file_list = FileList::load(&settings.file_list, &settings.prefixes);
     let processor = Processor { command: settings.command };
 
     loop {
